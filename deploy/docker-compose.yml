@@ -14,6 +14,9 @@ services:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       TZ: ${GYM_TIMEZONE}
+    # Машина маленькая, поэтому у каждого контейнера свой потолок: иначе один
+    # разросшийся процесс выдавливает соседей, и падает не он, а случайный.
+    mem_limit: ${DB_MEM_LIMIT:-384m}
     volumes:
       - pgdata:/var/lib/postgresql/data
     # Порт наружу не открыт: к базе ходит только бэкенд, по внутренней сети compose.
@@ -56,6 +59,9 @@ services:
       UPLOADS_BASE_URL: /uploads
       GYM_TIMEZONE: ${GYM_TIMEZONE}
       WORKOUT_ACCESS_DURATION: ${WORKOUT_ACCESS_DURATION:-PT3H}
+    # JVM берёт долю от лимита контейнера (MaxRAMPercentage=75 в Dockerfile).
+    # Без лимита она увидела бы всю память машины и забрала почти всю.
+    mem_limit: ${APP_MEM_LIMIT:-768m}
     volumes:
       # Фото и видео упражнений лежат на диске, а не в базе: без тома они исчезнут
       # при первой же пересборке образа.
@@ -83,6 +89,7 @@ services:
       # Подставляется в шаблон конфига при старте контейнера — образ ради смены
       # домена пересобирать не нужно.
       DOMAIN: ${DOMAIN}
+    mem_limit: ${WEB_MEM_LIMIT:-128m}
     volumes:
       - ./nginx/templates:/etc/nginx/templates:ro
       - certbot-conf:/etc/letsencrypt:ro
