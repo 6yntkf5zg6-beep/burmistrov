@@ -92,12 +92,13 @@ services:
     mem_limit: ${WEB_MEM_LIMIT:-128m}
     volumes:
       - ./nginx/templates:/etc/nginx/templates:ro
+      - ./nginx/entrypoint.sh:/etc/nginx/entrypoint.sh:ro
       - certbot-conf:/etc/letsencrypt:ro
       - certbot-www:/var/www/certbot:ro
-    # Раз в сутки перечитываем конфиг: сертификат, который обновил certbot, попадает
-    # в работу без перезапуска сайта.
-    command: >
-      /bin/sh -c "while :; do sleep 24h & wait $${!}; nginx -s reload; done & exec nginx -g 'daemon off;'"
+    # Запуск вынесен в отдельный файл: он подставляет домен в шаблон конфига,
+    # проверяет результат и раз в сутки перечитывает его ради нового сертификата.
+    # Подробности — в комментариях внутри nginx/entrypoint.sh.
+    command: ["/bin/sh", "/etc/nginx/entrypoint.sh"]
 
   # ------------------------------------------------- продление сертификата
   certbot:
