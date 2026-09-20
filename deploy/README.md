@@ -21,8 +21,7 @@ Let's Encrypt. После неё сайт открывается по `https://�
   Сборка фронтенда и Maven на 1 ГБ падают по памяти.
   Подойдут Timeweb Cloud, Selectel, Beget, Yandex Cloud — любой с Ubuntu 24.04.
 - **Домен** и доступ к его DNS.
-- **Рабочий Мак** с обеими папками проекта: код заливается на сервер прямо с него
-  (git в проектах пока не заведён).
+- **Оба репозитория на GitHub** — сервер забирает код оттуда по ключу только на чтение.
 
 ## 2. Домен смотрит на сервер
 
@@ -70,26 +69,68 @@ ufw allow 22/tcp && ufw allow 80/tcp && ufw allow 443/tcp && ufw enable
 
 ## 4. Код на сервере
 
-Проекты не в git, поэтому код заливается прямо с рабочего компьютера. Этим занимается
-`push-from-mac.sh` — он запускается **на Маке**, а не на сервере.
+Сервер забирает код с GitHub сам. Репозитории приватные, поэтому ему нужен доступ —
+дадим **deploy key**: отдельный ключ на каждый репозиторий, только на чтение. Даже если
+сервер когда-нибудь скомпрометируют, записать в репозиторий с него будет нельзя.
 
-Сначала создайте папку на сервере:
-
-```bash
-mkdir -p /opt/stan
-```
-
-Затем **в отдельном окне терминала на Маке**:
+### 4.1. Ключи на сервере
 
 ```bash
-cd /Users/leonid/IdeaProjects/burmistrov/deploy
-./push-from-mac.sh root@IP-сервера --no-restart
+ssh-keygen -t ed25519 -N "" -f ~/.ssh/deploy_burmistrov    -C "stan-server-backend"
+ssh-keygen -t ed25519 -N "" -f ~/.ssh/deploy_burmistrov_ui -C "stan-server-frontend"
+
+echo "--- БЭКЕНД ---";   cat ~/.ssh/deploy_burmistrov.pub
+echo "--- ФРОНТЕНД ---"; cat ~/.ssh/deploy_burmistrov_ui.pub
 ```
 
-`--no-restart` на первый раз обязателен: собирать ещё нечем, `.env` не заполнен.
+Каждый из двух ключей добавьте **в свой** репозиторий на GitHub:
+Settings → Deploy keys → Add deploy key. Галочку **«Allow write access» не ставьте**.
 
-Скрипт копирует обе папки, пропуская `node_modules`, `target`, `pgdata`, `.idea` и
-прочее, чему на сервере делать нечего. На сервере получится:
+Один и тот же ключ в два репозитория GitHub не пустит — отсюда и два ключа.
+
+### 4.2. Чтобы git знал, какой ключ куда
+
+```bash
+cat >> ~/.ssh/config <<'EOF'
+Host github-burmistrov
+  HostName github.com
+  User git
+  IdentityFile ~/.ssh/deploy_burmistrov
+  IdentitiesOnly yes
+
+Host github-burmistrov-ui
+  HostName github.com
+  User git
+  IdentityFile ~/.ssh/deploy_burmistrov_ui
+  IdentitiesOnly yes
+EOF
+chmod 600 ~/.ssh/config
+```
+
+`IdentitiesOnly yes` важен: без него ssh переберёт все ключи подряд, GitHub примет
+первый подошедший и выдаст доступ не к тому репозиторию.
+
+### 4.3. Ключи GitHub — чтобы не отвечать «yes» вслепую
+
+```bash
+curl -fsS https://api.github.com/meta \
+  | python3 -c "import sys,json;[print('github.com '+k) for k in json.load(sys.stdin)['ssh_keys']]" \
+  >> ~/.ssh/known_hosts
+```
+
+Так ключи приходят от самого GitHub по HTTPS. `ssh-keyscan` поверил бы чему угодно,
+что ответит на порту.
+
+### 4.4. Клонируем
+
+```bash
+mkdir -p /opt/stan && cd /opt/stan
+git clone git@github-burmistrov:6yntkf5zg6-beep/burmistrov.git       burmistrov
+git clone git@github-burmistrov-ui:6yntkf5zg6-beep/burmistrov-ui.git burmistrov-ui
+```
+
+Обратите внимание: вместо `github.com` — имена `github-burmistrov` и
+`github-burmistrov-ui` из `~/.ssh/config`. Должно получиться так:
 
 ```
 /opt/stan/
@@ -98,15 +139,8 @@ cd /Users/leonid/IdeaProjects/burmistrov/deploy
 └── burmistrov-ui/       ← фронтенд
 ```
 
-Если фронтенд лежит не в `~/UIprojects/burmistrov-ui`, укажите путь явно:
-
-```bash
-UI_SRC=/путь/к/burmistrov-ui ./push-from-mac.sh root@IP-сервера --no-restart
-```
-
-> Когда проекты попадут в git, заливку можно будет заменить на `git clone` и `git pull`,
-> а `push-from-mac.sh` выбросить. Пока источник правды — папки на вашем компьютере,
-> и держать их резервную копию стоит независимо от сервера.
+> Если GitHub почему-то недоступен, рядом лежит запасной путь: `push-from-mac.sh`
+> заливает обе папки с вашего компьютера по rsync. Обычная выкатка — через git.
 
 ## 5. Настройки
 
@@ -207,17 +241,11 @@ docker compose exec app sh -c "cd /app && tar xzf /tmp/uploads.tgz --strip-compo
 
 ## Повседневные команды
 
-**На Маке**, из папки `/Users/leonid/IdeaProjects/burmistrov/deploy`:
+Выкатка новой версии: закоммитили и запушили на GitHub у себя, затем **на сервере**,
+из папки `/opt/stan/burmistrov/deploy`:
 
 ```bash
-./push-from-mac.sh root@IP-сервера     # залить изменения и пересобрать — обычная выкатка
-./push-from-mac.sh root@IP-сервера --no-restart   # только залить
-```
-
-**На сервере**, из папки `/opt/stan/burmistrov/deploy`:
-
-```bash
-./update.sh                     # пересобрать и перезапустить (код уже залит)
+./update.sh                     # git pull обоих репозиториев + пересборка + перезапуск
 
 docker compose ps               # что работает
 docker compose logs -f app      # логи бэкенда
