@@ -1,0 +1,51 @@
+databaseChangeLog:
+  - changeSet:
+      id: 005-create-exercises-table
+      author: burmistrov
+      changes:
+        - createTable:
+            tableName: exercises
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: TEXT
+              - column:
+                  name: muscle_group
+                  type: VARCHAR(100)
+              - column:
+                  name: equipment
+                  type: VARCHAR(100)
+              - column:
+                  name: video_url
+                  type: VARCHAR(500)
+              - column:
+                  name: created_by
+                  type: BIGINT
+                  constraints:
+                    nullable: true
+                    foreignKeyName: fk_exercises_created_by
+                    references: users(id)
+              - column:
+                  name: created_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: exercises
+            indexName: idx_exercises_created_by
+            columns:
+              - column:
+                  name: created_by

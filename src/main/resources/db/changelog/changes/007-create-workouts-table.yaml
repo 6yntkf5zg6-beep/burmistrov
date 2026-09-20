@@ -1,0 +1,58 @@
+databaseChangeLog:
+  - changeSet:
+      id: 007-create-workouts-table
+      author: burmistrov
+      changes:
+        - createTable:
+            tableName: workouts
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: training_plan_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_workouts_training_plan
+                    references: training_plans(id)
+              - column:
+                  name: name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: scheduled_date
+                  type: DATE
+              - column:
+                  name: day_of_week
+                  type: SMALLINT
+              - column:
+                  name: order_index
+                  type: INT
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: VARCHAR(20)
+                  defaultValue: PLANNED
+                  constraints:
+                    nullable: false
+              - column:
+                  name: notes
+                  type: TEXT
+        - createIndex:
+            tableName: workouts
+            indexName: idx_workouts_training_plan
+            columns:
+              - column:
+                  name: training_plan_id
+        - sql:
+            sql: ALTER TABLE workouts ADD CONSTRAINT chk_workouts_status CHECK (status IN ('PLANNED','COMPLETED','SKIPPED'))
+        - sql:
+            sql: ALTER TABLE workouts ADD CONSTRAINT chk_workouts_day_of_week CHECK (day_of_week IS NULL OR day_of_week BETWEEN 1 AND 7)

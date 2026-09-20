@@ -1,0 +1,67 @@
+databaseChangeLog:
+  - changeSet:
+      id: 030-merge-workouts
+      author: burmistrov
+      comment: >
+        Merges "program_workouts" into "workout_templates" — both described the same thing (a named,
+        ordered list of exercises) and only differed in whether they belonged to a program. The
+        merged table is "workouts": a row with training_program_id IS NULL is a catalog workout,
+        a row with it set is one day of that program. As a result scheduled_workouts drops its
+        nullable XOR pair for a single NOT NULL workout_id, and per-set weights — which could only
+        reference the template branch — now work for program workouts too.
+      changes:
+        - sql:
+            splitStatements: true
+            stripComments: true
+            sql: |
+              -- 1. the template tables take over the unified names
+              ALTER TABLE workout_templates RENAME TO workouts;
+              ALTER TABLE workout_template_exercises RENAME TO workout_exercises;
+              ALTER TABLE workout_exercises RENAME COLUMN workout_template_id TO workout_id;
+
+              ALTER INDEX idx_workout_templates_trainer RENAME TO idx_workouts_trainer;
+              ALTER INDEX idx_workout_template_exercises_workout RENAME TO idx_workout_exercises_workout;
+              ALTER INDEX idx_workout_template_exercises_exercise RENAME TO idx_workout_exercises_exercise;
+
+              -- 2. a workout may now be a day of a program; legacy id is a scratch column
+              --    used only to remap the rows below, dropped at the end of this changeset.
+              ALTER TABLE workouts ADD COLUMN training_program_id BIGINT;
+              ALTER TABLE workouts ADD COLUMN order_index INT;
+              ALTER TABLE workouts ADD COLUMN legacy_program_workout_id BIGINT;
+              ALTER TABLE workouts ADD CONSTRAINT fk_workouts_training_program
+                  FOREIGN KEY (training_program_id) REFERENCES training_programs(id) ON DELETE CASCADE;
+              CREATE INDEX idx_workouts_training_program ON workouts (training_program_id);
+
+              -- 3. carry every program workout over, keeping its program and position
+              INSERT INTO workouts (trainer_id, name, description, created_at, updated_at,
+                                    training_program_id, order_index, legacy_program_workout_id)
+              SELECT tp.trainer_id, pw.name, pw.notes, now(), now(),
+                     pw.training_program_id, pw.order_index, pw.id
+              FROM program_workouts pw
+              JOIN training_programs tp ON tp.id = pw.training_program_id;
+
+              -- 4. and their exercise positions
+              INSERT INTO workout_exercises (workout_id, exercise_id, order_index, notes)
+              SELECT w.id, pwe.exercise_id, pwe.order_index, pwe.notes
+              FROM program_workout_exercises pwe
+              JOIN workouts w ON w.legacy_program_workout_id = pwe.program_workout_id;
+
+              -- 5. a scheduled workout now has exactly one source column
+              ALTER TABLE scheduled_workouts RENAME COLUMN workout_template_id TO workout_id;
+              UPDATE scheduled_workouts sw
+              SET workout_id = w.id
+              FROM workouts w
+              WHERE sw.program_workout_id IS NOT NULL
+                AND w.legacy_program_workout_id = sw.program_workout_id;
+              DELETE FROM scheduled_workouts WHERE workout_id IS NULL;
+              ALTER TABLE scheduled_workouts ALTER COLUMN workout_id SET NOT NULL;
+              ALTER TABLE scheduled_workouts DROP COLUMN program_workout_id;
+
+              -- 6. per-set weights follow the renamed exercise-position table
+              ALTER TABLE scheduled_workout_exercise_weights
+                  RENAME COLUMN workout_template_exercise_id TO workout_exercise_id;
+
+              -- 7. the old branch is gone
+              DROP TABLE program_workout_exercises;
+              DROP TABLE program_workouts;
+              ALTER TABLE workouts DROP COLUMN legacy_program_workout_id;

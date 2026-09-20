@@ -1,0 +1,55 @@
+databaseChangeLog:
+  - changeSet:
+      id: 004-create-trainer-clients-table
+      author: burmistrov
+      changes:
+        - createTable:
+            tableName: trainer_clients
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: trainer_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_trainer_clients_trainer
+                    references: users(id)
+              - column:
+                  name: client_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_trainer_clients_client
+                    references: users(id)
+              - column:
+                  name: status
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: started_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ended_at
+                  type: TIMESTAMP WITH TIME ZONE
+        - addUniqueConstraint:
+            tableName: trainer_clients
+            columnNames: trainer_id, client_id
+            constraintName: uq_trainer_clients_pair
+        - createIndex:
+            tableName: trainer_clients
+            indexName: idx_trainer_clients_client
+            columns:
+              - column:
+                  name: client_id
+        - sql:
+            sql: ALTER TABLE trainer_clients ADD CONSTRAINT chk_trainer_clients_status CHECK (status IN ('PENDING','ACTIVE','ARCHIVED'))

@@ -1,0 +1,27 @@
+databaseChangeLog:
+  - changeSet:
+      id: 025-scheduled-workouts-program-workout
+      author: burmistrov
+      comment: A scheduled workout may now come from a ProgramWorkout (whole program assigned at once) instead of only a single WorkoutTemplate — exactly one of the two is set.
+      changes:
+        - dropNotNullConstraint:
+            tableName: scheduled_workouts
+            columnName: workout_template_id
+            columnDataType: BIGINT
+        - addColumn:
+            tableName: scheduled_workouts
+            columns:
+              - column:
+                  name: program_workout_id
+                  type: BIGINT
+                  constraints:
+                    nullable: true
+                    foreignKeyName: fk_scheduled_workouts_program_workout
+                    references: program_workouts(id)
+                    deleteCascade: true
+        - createIndex:
+            tableName: scheduled_workouts
+            indexName: idx_scheduled_workouts_program_workout
+            columns:
+              - column:
+                  name: program_workout_id

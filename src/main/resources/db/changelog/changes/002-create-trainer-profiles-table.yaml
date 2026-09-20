@@ -1,0 +1,33 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-create-trainer-profiles-table
+      author: burmistrov
+      changes:
+        - createTable:
+            tableName: trainer_profiles
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uq_trainer_profiles_user_id
+                    foreignKeyName: fk_trainer_profiles_user
+                    references: users(id)
+              - column:
+                  name: bio
+                  type: TEXT
+              - column:
+                  name: specialization
+                  type: VARCHAR(255)
+              - column:
+                  name: experience_years
+                  type: INT

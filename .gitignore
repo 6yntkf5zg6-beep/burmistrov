@@ -1,0 +1,56 @@
+HELP.md
+target/
+/uploads/
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/
+
+# Боевые настройки с паролями — только на сервере.
+deploy/.env
+
+### Данные — в репозиторий им нельзя ###
+# pgdata — настоящий каталог PostgreSQL из compose.yaml: там лежит локальная база
+# со всеми клиентами, весами, посещениями и хешами паролей.
+pgdata/
+local-postgres/
+# Разовые SQL-скрипты в корне: посещения, сброс пароля. Миграции Liquibase лежат
+# в src/main/resources/db и в .yaml, поэтому под это правило не попадают.
+/*.sql
+# Экспорт Insomnia хранит заголовки запросов вместе с токенами доступа.
+insomnia/
+
+### Рабочий мусор ###
+.claude/
+_to_delete/
+Claude outputs/
+*.tgz
+.DS_Store
+*.bak

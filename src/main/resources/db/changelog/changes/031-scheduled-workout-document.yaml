@@ -1,0 +1,62 @@
+databaseChangeLog:
+  - changeSet:
+      id: 031-scheduled-workout-document
+      author: burmistrov
+      comment: >
+        A scheduled workout becomes a snapshot instead of a reference. It used to point at a live
+        workout with ON DELETE CASCADE, so editing a workout rewrote the client's past and deleting
+        one erased it; and only per-set weights could be overridden for a given day. Now the whole
+        workout is stored as a JSONB document on the row: what was assigned on a date stays exactly
+        that, and the trainer can add, drop or reorder exercises for one day without touching the
+        template. source_workout_id keeps a soft link to the template it grew from — no foreign key,
+        so the template stays free to change or disappear.
+      changes:
+        - sql:
+            splitStatements: true
+            stripComments: true
+            sql: |
+              ALTER TABLE scheduled_workouts ADD COLUMN workout JSONB;
+              ALTER TABLE scheduled_workouts ADD COLUMN source_workout_id BIGINT;
+
+              -- materialise the document each existing row implied
+              UPDATE scheduled_workouts sw
+              SET source_workout_id = sw.workout_id,
+                  workout = jsonb_build_object(
+                    'version', 1,
+                    'name', w.name,
+                    'description', w.description,
+                    'exercises', COALESCE((
+                      SELECT jsonb_agg(
+                               jsonb_build_object(
+                                 'exerciseId', e.id,
+                                 'name',       e.name,
+                                 'imageUrl',   e.image_url,
+                                 'videoUrl',   e.video_url,
+                                 'notes',      we.notes,
+                                 'sets', COALESCE((
+                                   SELECT jsonb_agg(
+                                            jsonb_build_object('reps', x.reps, 'weightKg', x.weight_kg)
+                                            ORDER BY x.set_index)
+                                   FROM scheduled_workout_exercise_weights x
+                                   WHERE x.scheduled_workout_id = sw.id
+                                     AND x.workout_exercise_id  = we.id
+                                 ), '[]'::jsonb)
+                               ) ORDER BY we.order_index, we.id)
+                      FROM workout_exercises we
+                      JOIN exercises e ON e.id = we.exercise_id
+                      WHERE we.workout_id = w.id
+                    ), '[]'::jsonb))
+              FROM workouts w
+              WHERE w.id = sw.workout_id;
+
+              ALTER TABLE scheduled_workouts ALTER COLUMN workout SET NOT NULL;
+
+              -- the live reference and the per-set override table are what the document replaces
+              ALTER TABLE scheduled_workouts DROP COLUMN workout_id;
+              DROP TABLE scheduled_workout_exercise_weights;
+
+              ALTER TABLE scheduled_workouts
+                ADD CONSTRAINT chk_scheduled_workouts_document
+                CHECK (jsonb_typeof(workout -> 'exercises') = 'array');
+
+              CREATE INDEX idx_scheduled_workouts_source ON scheduled_workouts (source_workout_id);

@@ -1,0 +1,19 @@
+databaseChangeLog:
+  - changeSet:
+      id: 035-attendance-weight
+      author: burmistrov
+      comment: >
+        Клиент называет свой вес в момент, когда открывает тренировку. Вес привязан к заходу,
+        а не к профилю: профиль знает только текущее значение, а для графика «от тренировки
+        к тренировке» нужна история. В профиль последнее значение всё равно переносится —
+        тренер смотрит именно туда.
+      changes:
+        - sql:
+            splitStatements: true
+            stripComments: true
+            sql: |
+              ALTER TABLE workout_attendance ADD COLUMN weight_kg NUMERIC(5, 2);
+
+              ALTER TABLE workout_attendance
+                  ADD CONSTRAINT chk_workout_attendance_weight
+                  CHECK (weight_kg IS NULL OR weight_kg > 0);

@@ -1,0 +1,43 @@
+spring:
+    servlet:
+        multipart:
+            max-file-size: 25MB
+            max-request-size: 25MB
+    datasource:
+        # Значения по умолчанию — локальная база из compose.yaml в корне проекта, так что
+        # для разработки ничего настраивать не нужно. На сервере эти три переменные
+        # приходят из окружения и уводят приложение на базу в соседнем контейнере.
+        url: ${DB_URL:jdbc:postgresql://localhost:5434/burmistrov}
+        username: ${DB_USER:postgres}
+        password: ${DB_PASSWORD:postgres}
+        driver-class-name: org.postgresql.Driver
+        hikari:
+            maximum-pool-size: ${DATASOURCE_MAX_POOL_SIZE:4}
+            validation-timeout: ${DATASOURCE_VALIDATION_TIMEOUT:2000}
+            max-lifetime: ${DATASOURCE_MAX_LIFETIME:21600000}
+            keep-alive-time: ${DATASOURCE_KEEP_ALIVE_TIME:40000}
+            minimum-idle: ${DATASOURCE_MINIMUM_IDLE:1}
+    jpa:
+        hibernate:
+            ddl-auto: validate
+
+app:
+    jwt:
+        secret: ${JWT_SECRET:dev-only-secret-key-please-change-in-production-0123456789abcdef}
+        expiration-ms: ${JWT_EXPIRATION_MS:900000}
+        refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:2592000000}
+    cors:
+        allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+    frontend-url: ${FRONTEND_URL:http://localhost:5173}
+    seed-trainer:
+        email: ${SEED_TRAINER_EMAIL:trainer@burmistrov.pro}
+        password: ${SEED_TRAINER_PASSWORD:ChangeMe123!}
+    uploads:
+        dir: ${UPLOADS_DIR:uploads}
+        base-url: ${UPLOADS_BASE_URL:/uploads}
+    # Часовой пояс зала. «Назначенный день» без него неопределён: сервер в UTC решит,
+    # что день кончился, когда в зале ещё вечер.
+    gym-timezone: ${GYM_TIMEZONE:Europe/Moscow}
+    workout-access:
+        # Сколько тренировка доступна клиенту с момента открытия.
+        duration: ${WORKOUT_ACCESS_DURATION:PT3H}

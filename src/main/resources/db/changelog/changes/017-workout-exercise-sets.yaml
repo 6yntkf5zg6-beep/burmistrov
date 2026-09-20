@@ -1,0 +1,60 @@
+databaseChangeLog:
+  - changeSet:
+      id: 017-workout-exercise-sets
+      author: burmistrov
+      comment: >
+        A workout exercise no longer has one shared reps/weight for a "sets" count — each set gets
+        its own row so different sets of the same exercise can carry different reps and weight.
+      changes:
+        - createTable:
+            tableName: workout_exercise_sets
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: workout_exercise_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_workout_exercise_sets_we
+                    references: workout_exercises(id)
+                    deleteCascade: true
+              - column:
+                  name: set_number
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: reps
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: weight_kg
+                  type: NUMERIC(6,2)
+        - createIndex:
+            tableName: workout_exercise_sets
+            indexName: idx_workout_exercise_sets_we
+            columns:
+              - column:
+                  name: workout_exercise_id
+        - dropColumn:
+            tableName: workout_exercises
+            columnName: sets
+        - dropColumn:
+            tableName: workout_exercises
+            columnName: reps
+        - dropColumn:
+            tableName: workout_exercises
+            columnName: weight_kg
+        - dropColumn:
+            tableName: workout_exercises
+            columnName: rest_seconds
+        - dropColumn:
+            tableName: workout_exercises
+            columnName: tempo

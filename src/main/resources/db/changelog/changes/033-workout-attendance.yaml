@@ -1,0 +1,79 @@
+databaseChangeLog:
+  - changeSet:
+      id: 033-workout-attendance
+      author: burmistrov
+      comment: >
+        Доступ клиента к назначенной тренировке и факт её посещения. Строка одна на тренировку:
+        переоткрытие не заводит новую запись, а сдвигает окно в существующей, поэтому правило
+        «доступ у тренировки один» держит UNIQUE, а не сервис. Факт визита отделён от окна:
+        attended_at ставится один раз и переоткрытием не сдвигается, иначе тренер, открывший
+        окно вечером, затирал бы время, когда клиент реально был. Ссылка на тренировку мягкая,
+        имя и дата продублированы снимком: удаление тренировки не должно стирать посещение.
+      changes:
+        - sql:
+            splitStatements: true
+            stripComments: true
+            sql: |
+              CREATE TABLE workout_attendance (
+                  id                   BIGSERIAL PRIMARY KEY,
+                  scheduled_workout_id BIGINT NOT NULL UNIQUE,
+                  trainer_id           BIGINT NOT NULL REFERENCES users(id),
+                  client_id            BIGINT NOT NULL REFERENCES users(id),
+                  workout_date         DATE NOT NULL,
+                  workout_name         VARCHAR(255) NOT NULL,
+                  attended_at          TIMESTAMP WITH TIME ZONE,
+                  attendance_source    VARCHAR(16),
+                  opened_at            TIMESTAMP WITH TIME ZONE,
+                  expires_at           TIMESTAMP WITH TIME ZONE
+              );
+
+              ALTER TABLE workout_attendance
+                  ADD CONSTRAINT chk_workout_attendance_window
+                  CHECK (expires_at IS NULL OR (opened_at IS NOT NULL AND expires_at > opened_at));
+
+              ALTER TABLE workout_attendance
+                  ADD CONSTRAINT chk_workout_attendance_source
+                  CHECK ((attended_at IS NULL) = (attendance_source IS NULL));
+
+              CREATE INDEX idx_workout_attendance_client
+                  ON workout_attendance (trainer_id, client_id, workout_date DESC);
+
+              CREATE TABLE workout_exercise_comments (
+                  id                   BIGSERIAL PRIMARY KEY,
+                  scheduled_workout_id BIGINT NOT NULL,
+                  exercise_uid         VARCHAR(36) NOT NULL,
+                  exercise_name        VARCHAR(255) NOT NULL,
+                  author_id            BIGINT NOT NULL REFERENCES users(id),
+                  text                 TEXT NOT NULL,
+                  created_at           TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+              );
+
+              CREATE INDEX idx_exercise_comments_workout
+                  ON workout_exercise_comments (scheduled_workout_id, created_at);
+
+  - changeSet:
+      id: 033-workout-document-exercise-uid
+      author: burmistrov
+      comment: >
+        Комментарий клиента цепляется к упражнению внутри дня, а устойчивого идентификатора у него
+        не было: exerciseId бывает пустым, а порядок тренер меняет перетаскиванием. Добавляем uid
+        каждому упражнению снимка и поднимаем version документа до 2 — поле version заведено ровно
+        для таких изменений формы.
+      changes:
+        - sql:
+            splitStatements: true
+            stripComments: true
+            sql: |
+              UPDATE scheduled_workouts
+              SET workout = jsonb_set(
+                      jsonb_set(workout, '{version}', '2'::jsonb),
+                      '{exercises}',
+                      COALESCE((
+                          SELECT jsonb_agg(
+                                     CASE WHEN jsonb_exists(item, 'uid')
+                                          THEN item
+                                          ELSE item || jsonb_build_object('uid', gen_random_uuid()::text)
+                                     END
+                                     ORDER BY ord)
+                          FROM jsonb_array_elements(workout -> 'exercises') WITH ORDINALITY AS t(item, ord)
+                      ), '[]'::jsonb));

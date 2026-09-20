@@ -1,0 +1,22 @@
+databaseChangeLog:
+  - changeSet:
+      id: 034-one-comment-per-exercise
+      author: burmistrov
+      comment: >
+        Комментарий клиента к упражнению теперь один и правится, а не добавляется каждый раз
+        заново. Правило держит уникальный ключ, а не сервис. Уже накопленные дубли схлопываем,
+        оставляя последний: он и есть то, что клиент хотел сказать.
+      changes:
+        - sql:
+            splitStatements: true
+            stripComments: true
+            sql: |
+              DELETE FROM workout_exercise_comments older
+              USING workout_exercise_comments newer
+              WHERE older.scheduled_workout_id = newer.scheduled_workout_id
+                AND older.exercise_uid = newer.exercise_uid
+                AND older.id < newer.id;
+
+              ALTER TABLE workout_exercise_comments
+                  ADD CONSTRAINT uq_exercise_comment_per_exercise
+                  UNIQUE (scheduled_workout_id, exercise_uid);

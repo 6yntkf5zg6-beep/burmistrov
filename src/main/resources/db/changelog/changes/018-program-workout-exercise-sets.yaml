@@ -1,0 +1,58 @@
+databaseChangeLog:
+  - changeSet:
+      id: 018-program-workout-exercise-sets
+      author: burmistrov
+      comment: Same per-set breakdown as workout_exercise_sets, but for program (template) workouts.
+      changes:
+        - createTable:
+            tableName: program_workout_exercise_sets
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: program_workout_exercise_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_program_workout_exercise_sets_we
+                    references: program_workout_exercises(id)
+                    deleteCascade: true
+              - column:
+                  name: set_number
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: reps
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: weight_kg
+                  type: NUMERIC(6,2)
+        - createIndex:
+            tableName: program_workout_exercise_sets
+            indexName: idx_program_workout_exercise_sets_we
+            columns:
+              - column:
+                  name: program_workout_exercise_id
+        - dropColumn:
+            tableName: program_workout_exercises
+            columnName: sets
+        - dropColumn:
+            tableName: program_workout_exercises
+            columnName: reps
+        - dropColumn:
+            tableName: program_workout_exercises
+            columnName: weight_kg
+        - dropColumn:
+            tableName: program_workout_exercises
+            columnName: rest_seconds
+        - dropColumn:
+            tableName: program_workout_exercises
+            columnName: tempo

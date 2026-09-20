@@ -1,0 +1,18 @@
+databaseChangeLog:
+  - changeSet:
+      id: 029-scheduled-workout-exercise-weights-add-sets
+      author: burmistrov
+      comment: A scheduled workout's exercise weight now represents one set (with its own reps) instead of a single aggregate weight, restoring per-set reps+weight entry scoped to the specific scheduled instance.
+      changes:
+        - addColumn:
+            tableName: scheduled_workout_exercise_weights
+            columns:
+              - column:
+                  name: reps
+                  type: INT
+              - column:
+                  name: set_index
+                  type: INT
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false

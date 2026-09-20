@@ -1,0 +1,18 @@
+databaseChangeLog:
+  - changeSet:
+      id: 023-drop-training-plans
+      author: burmistrov
+      comment: Removes the "Training Plan" (live, client-assigned) hierarchy entirely — training programs and workout templates (the reusable authoring side) are unaffected.
+      changes:
+        - dropTable:
+            tableName: workout_exercise_logs
+        - dropTable:
+            tableName: workout_logs
+        - dropTable:
+            tableName: workout_exercise_sets
+        - dropTable:
+            tableName: workout_exercises
+        - dropTable:
+            tableName: workouts
+        - dropTable:
+            tableName: training_plans

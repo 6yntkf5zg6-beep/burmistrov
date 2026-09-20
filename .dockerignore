@@ -1,0 +1,18 @@
+# В контекст сборки уезжает только то, из чего собирается jar.
+target/
+uploads/
+pgdata/
+local-postgres/
+.git/
+.idea/
+.run/
+.mvn/
+.claude/
+_removed/
+_to_delete/
+_sync-out.tgz
+deploy/
+insomnia/
+*.sql
+*.tgz
+HELP.md

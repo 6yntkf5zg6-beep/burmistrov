@@ -1,0 +1,32 @@
+databaseChangeLog:
+  - changeSet:
+      id: 032-program-assignments
+      author: burmistrov
+      comment: >
+        Записывает назначение программы как отдельное событие. До сих пор от него оставались
+        только строки расписания, поэтому из базы нельзя было узнать ни того, что тренировки
+        назначались одной программой, ни того, какие тренировки тренер из назначения исключил.
+        Как и запланированная тренировка, назначение хранится снимком: имя программы и список её
+        тренировок на тот момент, с отметкой included. Правка или удаление программы историю
+        не переписывает, поэтому ссылка на неё мягкая, без внешнего ключа.
+      changes:
+        - sql:
+            splitStatements: true
+            stripComments: true
+            sql: |
+              CREATE TABLE program_assignments (
+                  id                BIGSERIAL PRIMARY KEY,
+                  trainer_id        BIGINT NOT NULL REFERENCES users(id),
+                  client_id         BIGINT NOT NULL REFERENCES users(id),
+                  source_program_id BIGINT,
+                  program_name      VARCHAR(255) NOT NULL,
+                  workouts          JSONB NOT NULL,
+                  assigned_at       TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+              );
+
+              ALTER TABLE program_assignments
+                  ADD CONSTRAINT chk_program_assignments_workouts
+                  CHECK (jsonb_typeof(workouts) = 'array');
+
+              CREATE INDEX idx_program_assignments_client
+                  ON program_assignments (trainer_id, client_id, assigned_at DESC);

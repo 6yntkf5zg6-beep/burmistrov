@@ -1,0 +1,12 @@
+databaseChangeLog:
+  - changeSet:
+      id: 027-remove-sets-count
+      author: burmistrov
+      comment: A workout's exercise no longer tracks a sets count either — just the exercise itself, its order, and a comment.
+      changes:
+        - dropColumn:
+            tableName: workout_template_exercises
+            columnName: sets
+        - dropColumn:
+            tableName: program_workout_exercises
+            columnName: sets

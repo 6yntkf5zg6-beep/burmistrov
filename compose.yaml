@@ -1,0 +1,16 @@
+version: '3'
+services:
+  postgres:
+    container_name: burmistrov-postgres
+    hostname: postgres
+    image: postgres
+    environment:
+      POSTGRES_DB: "burmistrov"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "postgres"
+      PGDATA: "/var/lib/postgresql/data/pgdata"
+    volumes:
+      - ./local-postgres:/docker-entrypoint-initdb.d
+      - .:/var/lib/postgresql/data
+    ports:
+      - "5434:5432"

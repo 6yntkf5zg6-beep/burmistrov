@@ -1,0 +1,11 @@
+databaseChangeLog:
+  - changeSet:
+      id: 019-add-exercise-image-url
+      author: burmistrov
+      changes:
+        - addColumn:
+            tableName: exercises
+            columns:
+              - column:
+                  name: image_url
+                  type: VARCHAR(500)

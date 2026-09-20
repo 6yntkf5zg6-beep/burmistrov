@@ -1,0 +1,16 @@
+databaseChangeLog:
+  - changeSet:
+      id: 037-patent-scan-only
+      author: burmistrov
+      comment: >
+        Патент на странице — это скан, номер и название на карточке не показываются.
+        Поэтому при добавлении их больше не спрашивают, а колонки становятся
+        необязательными. Старые записи их сохраняют: у двух патентов скана ещё нет,
+        и карточка отрисуется бланком с номером, пока скан не загрузят.
+      changes:
+        - sql:
+            splitStatements: true
+            stripComments: true
+            sql: |
+              ALTER TABLE patents ALTER COLUMN number DROP NOT NULL;
+              ALTER TABLE patents ALTER COLUMN title DROP NOT NULL;

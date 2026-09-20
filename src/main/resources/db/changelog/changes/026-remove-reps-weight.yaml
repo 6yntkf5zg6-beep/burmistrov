@@ -1,0 +1,28 @@
+databaseChangeLog:
+  - changeSet:
+      id: 026-remove-reps-weight
+      author: burmistrov
+      comment: A workout's exercise no longer tracks per-set reps/weight — only how many sets, as a plain count directly on the exercise row.
+      changes:
+        - addColumn:
+            tableName: workout_template_exercises
+            columns:
+              - column:
+                  name: sets
+                  type: INT
+                  defaultValueNumeric: 3
+                  constraints:
+                    nullable: false
+        - addColumn:
+            tableName: program_workout_exercises
+            columns:
+              - column:
+                  name: sets
+                  type: INT
+                  defaultValueNumeric: 3
+                  constraints:
+                    nullable: false
+        - dropTable:
+            tableName: workout_template_exercise_sets
+        - dropTable:
+            tableName: program_workout_exercise_sets

@@ -1,0 +1,58 @@
+databaseChangeLog:
+  - changeSet:
+      id: 010-create-workout-exercise-logs-table
+      author: burmistrov
+      changes:
+        - createTable:
+            tableName: workout_exercise_logs
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: workout_log_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_workout_exercise_logs_log
+                    references: workout_logs(id)
+              - column:
+                  name: workout_exercise_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_workout_exercise_logs_we
+                    references: workout_exercises(id)
+              - column:
+                  name: set_number
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: reps_actual
+                  type: INT
+              - column:
+                  name: weight_actual_kg
+                  type: NUMERIC(6,2)
+              - column:
+                  name: completed
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: workout_exercise_logs
+            indexName: idx_workout_exercise_logs_log
+            columns:
+              - column:
+                  name: workout_log_id
+        - createIndex:
+            tableName: workout_exercise_logs
+            indexName: idx_workout_exercise_logs_we
+            columns:
+              - column:
+                  name: workout_exercise_id

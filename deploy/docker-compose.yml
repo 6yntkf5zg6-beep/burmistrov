@@ -1,0 +1,112 @@
+# Боевая сборка «СТАН»: база, бэкенд, веб-сервер и продление сертификата.
+#
+# Запускается из этой папки: `docker compose up -d`. Настройки берутся из .env рядом —
+# в самом файле секретов нет, поэтому его можно держать в git.
+name: burmistrov
+
+services:
+  # ------------------------------------------------------------------ база
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      TZ: ${GYM_TIMEZONE}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # Порт наружу не открыт: к базе ходит только бэкенд, по внутренней сети compose.
+    # Открыть 5432 в интернет — самый быстрый способ потерять базу.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # --------------------------------------------------------------- бэкенд
+  app:
+    build:
+      context: ${BACKEND_PATH:-..}
+    restart: unless-stopped
+    depends_on:
+      db:
+        # Не «запустился», а «отвечает»: Liquibase на старте сразу лезет в базу,
+        # и без этой проверки бэкенд падает на первой же миграции.
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-900000}
+      JWT_REFRESH_EXPIRATION_MS: ${JWT_REFRESH_EXPIRATION_MS:-2592000000}
+
+      # Браузер ходит на тот же адрес, что и страница, поэтому кросс-доменных
+      # запросов здесь нет вовсе. Список оставлен на случай, если фронтенд когда-то
+      # переедет на отдельный домен.
+      CORS_ALLOWED_ORIGINS: https://${DOMAIN}
+      FRONTEND_URL: https://${DOMAIN}
+
+      SEED_TRAINER_EMAIL: ${SEED_TRAINER_EMAIL}
+      SEED_TRAINER_PASSWORD: ${SEED_TRAINER_PASSWORD}
+
+      UPLOADS_DIR: /app/uploads
+      UPLOADS_BASE_URL: /uploads
+      GYM_TIMEZONE: ${GYM_TIMEZONE}
+      WORKOUT_ACCESS_DURATION: ${WORKOUT_ACCESS_DURATION:-PT3H}
+    volumes:
+      # Фото и видео упражнений лежат на диске, а не в базе: без тома они исчезнут
+      # при первой же пересборке образа.
+      - uploads:/app/uploads
+    healthcheck:
+      # Actuator в проекте не подключён, поэтому проверяем самое простое — что порт
+      # принимает соединение. Этого хватает, чтобы nginx не стартовал раньше бэкенда.
+      test: ["CMD-SHELL", "timeout 2 bash -c '</dev/tcp/localhost/8080'"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
+
+  # ------------------------------------------------------- фронтенд и вход
+  web:
+    build:
+      context: ${UI_PATH:-../../burmistrov-ui}
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      # Подставляется в шаблон конфига при старте контейнера — образ ради смены
+      # домена пересобирать не нужно.
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./nginx/templates:/etc/nginx/templates:ro
+      - certbot-conf:/etc/letsencrypt:ro
+      - certbot-www:/var/www/certbot:ro
+    # Раз в сутки перечитываем конфиг: сертификат, который обновил certbot, попадает
+    # в работу без перезапуска сайта.
+    command: >
+      /bin/sh -c "while :; do sleep 24h & wait $${!}; nginx -s reload; done & exec nginx -g 'daemon off;'"
+
+  # ------------------------------------------------- продление сертификата
+  certbot:
+    image: certbot/certbot
+    restart: unless-stopped
+    volumes:
+      - certbot-conf:/etc/letsencrypt
+      - certbot-www:/var/www/certbot
+    # Let's Encrypt выдаёт сертификат на 90 дней и обновляет за 30 до конца.
+    # Попытка дважды в сутки — рекомендация самого Let's Encrypt: если день выпал
+    # (сервер лежал, сеть моргнула), запас в месяц всё покроет.
+    entrypoint: >
+      /bin/sh -c "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $${!}; done"
+
+volumes:
+  pgdata:
+  uploads:
+  certbot-conf:
+  certbot-www:

@@ -1,0 +1,74 @@
+databaseChangeLog:
+  - changeSet:
+      id: 006-create-training-plans-table
+      author: burmistrov
+      changes:
+        - createTable:
+            tableName: training_plans
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: trainer_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_training_plans_trainer
+                    references: users(id)
+              - column:
+                  name: client_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_training_plans_client
+                    references: users(id)
+              - column:
+                  name: name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: TEXT
+              - column:
+                  name: start_date
+                  type: DATE
+              - column:
+                  name: end_date
+                  type: DATE
+              - column:
+                  name: status
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: training_plans
+            indexName: idx_training_plans_trainer
+            columns:
+              - column:
+                  name: trainer_id
+        - createIndex:
+            tableName: training_plans
+            indexName: idx_training_plans_client
+            columns:
+              - column:
+                  name: client_id
+        - sql:
+            sql: ALTER TABLE training_plans ADD CONSTRAINT chk_training_plans_status CHECK (status IN ('DRAFT','ACTIVE','COMPLETED','ARCHIVED'))
