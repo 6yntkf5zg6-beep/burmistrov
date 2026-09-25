@@ -110,3 +110,6 @@ databaseChangeLog:
   - include:
       file: changes/037-patent-scan-only.yaml
       relativeToChangelogFile: true
+  - include:
+      file: changes/038-invite-label.yaml
+      relativeToChangelogFile: true

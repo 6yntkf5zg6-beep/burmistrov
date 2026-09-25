@@ -55,8 +55,9 @@ public class AuthService {
         User user = User.builder()
                 .email(request.email())
                 .passwordHash(passwordEncoder.encode(request.password()))
-                .firstName(invite.getFirstName())
-                .lastName(invite.getLastName())
+                // Имя приходит от самого клиента: приглашение его больше не несёт.
+                .firstName(request.firstName().trim())
+                .lastName(request.lastName().trim())
                 .phone(request.phone())
                 .role(User.Role.CLIENT)
                 .active(true)

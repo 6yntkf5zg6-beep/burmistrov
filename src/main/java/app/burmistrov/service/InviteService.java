@@ -17,13 +17,14 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.security.access.AccessDeniedException;
 
 @Service
 @RequiredArgsConstructor
 public class InviteService {
 
     private static final Duration VALIDITY = Duration.ofDays(7);
-    private static final InviteCheckResponse INVALID = new InviteCheckResponse(false, null, null, null);
+    private static final InviteCheckResponse INVALID = new InviteCheckResponse(false, null);
 
     private final ClientInviteRepository clientInviteRepository;
     private final UserRepository userRepository;
@@ -39,8 +40,7 @@ public class InviteService {
         ClientInvite invite = ClientInvite.builder()
                 .trainer(trainer)
                 .token(UUID.randomUUID().toString().replace("-", ""))
-                .firstName(request.firstName())
-                .lastName(request.lastName())
+                .label(normalizeLabel(request.label()))
                 .expiresAt(Instant.now().plus(VALIDITY))
                 .build();
         return InviteResponse.from(clientInviteRepository.save(invite), frontendBaseUrl);
@@ -58,8 +58,33 @@ public class InviteService {
         return clientInviteRepository.findByToken(token)
                 .filter(invite -> invite.getExpiresAt().isAfter(Instant.now()))
                 .map(invite -> new InviteCheckResponse(true,
-                        invite.getTrainer().getFirstName() + " " + invite.getTrainer().getLastName(),
-                        invite.getFirstName(), invite.getLastName()))
+                        invite.getTrainer().getFirstName() + " " + invite.getTrainer().getLastName()))
                 .orElse(INVALID);
+    }
+
+    /** Пустая пометка и пометка из одних пробелов — это отсутствие пометки, а не пустая строка. */
+    private static String normalizeLabel(String label) {
+        if (label == null) return null;
+        String trimmed = label.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    /**
+     * Убирает ещё не использованную ссылку.
+     *
+     * Проверка роли говорит лишь о том, что запрос пришёл от какого-то тренера, а id
+     * в адресе подбирается перебором — поэтому сверяем владельца отдельно, иначе один
+     * тренер смог бы гасить приглашения другого.
+     *
+     * Использованные приглашения удалять нечего: регистрация стирает их сама.
+     */
+    @Transactional
+    public void delete(Long trainerId, Long inviteId) {
+        ClientInvite invite = clientInviteRepository.findById(inviteId)
+                .orElseThrow(() -> new ResourceNotFoundException("Invite not found"));
+        if (!invite.getTrainer().getId().equals(trainerId)) {
+            throw new AccessDeniedException("Not your invite");
+        }
+        clientInviteRepository.delete(invite);
     }
 }

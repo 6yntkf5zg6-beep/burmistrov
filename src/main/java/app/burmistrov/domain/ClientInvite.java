@@ -38,11 +38,13 @@ public class ClientInvite {
     @Column(nullable = false, unique = true)
     private String token;
 
-    @Column(name = "first_name", nullable = false)
-    private String firstName;
-
-    @Column(name = "last_name", nullable = false)
-    private String lastName;
+    /**
+     * Пометка тренера «для кого» — необязательная и видна только ему. Раньше здесь
+     * лежали имя и фамилия клиента, но заполнял их тренер вслепую, а клиент при
+     * регистрации всё равно не мог их поправить.
+     */
+    @Column(name = "label", length = 100)
+    private String label;
 
     @Column(name = "expires_at", nullable = false)
     private Instant expiresAt;

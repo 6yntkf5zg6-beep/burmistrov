@@ -54,3 +54,6 @@ Claude outputs/
 *.tgz
 .DS_Store
 *.bak
+
+# Логи локальных запусков из IDEA — пачкают статус при каждом старте.
+.run/*.log

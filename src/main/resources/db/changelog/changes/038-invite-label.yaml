@@ -1,0 +1,29 @@
+databaseChangeLog:
+  - changeSet:
+      id: 038-invite-label
+      author: burmistrov
+      comment: >-
+        Имя и фамилию клиента при регистрации вводит он сам, а не тренер при создании
+        ссылки. Вместо двух обязательных колонок остаётся одна необязательная пометка
+        «для кого» — она нужна тренеру, чтобы различать ещё не отправленные ссылки.
+      changes:
+        - addColumn:
+            tableName: client_invites
+            columns:
+              - column:
+                  name: label
+                  type: VARCHAR(100)
+        # Уже выданные ссылки не теряют подсказку: то, что тренер вписал раньше,
+        # переезжает в пометку. На регистрацию это уже не влияет.
+        - update:
+            tableName: client_invites
+            columns:
+              - column:
+                  name: label
+                  valueComputed: "left(first_name || ' ' || last_name, 100)"
+        - dropColumn:
+            tableName: client_invites
+            columnName: first_name
+        - dropColumn:
+            tableName: client_invites
+            columnName: last_name

@@ -1,9 +1,13 @@
 package app.burmistrov.dto;
 
+/**
+ * Что страница регистрации узнаёт о ссылке до того, как клиент что-то ввёл.
+ *
+ * Пометка тренера сюда намеренно не попадает: она для него самого и может содержать
+ * что угодно («Петя, должник»), показывать её приглашённому незачем.
+ */
 public record InviteCheckResponse(
         boolean valid,
-        String trainerName,
-        String firstName,
-        String lastName
+        String trainerName
 ) {
 }

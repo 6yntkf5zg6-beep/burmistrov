@@ -1,9 +1,15 @@
 package app.burmistrov.dto;
 
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
+/**
+ * Что тренер задаёт при создании ссылки-приглашения.
+ *
+ * Имени и фамилии здесь больше нет: их вводит сам клиент при регистрации. Осталась
+ * необязательная пометка для тренера — без неё список ещё не использованных ссылок
+ * выглядит как несколько одинаковых адресов, и непонятно, какую кому отправлять.
+ */
 public record CreateInviteRequest(
-        @NotBlank String firstName,
-        @NotBlank String lastName
+        @Size(max = 100) String label
 ) {
 }

@@ -4,12 +4,16 @@ import app.burmistrov.domain.ClientInvite;
 
 import java.time.Instant;
 
+/**
+ * Ссылка-приглашение в списке у тренера.
+ *
+ * {@code label} — его собственная пометка «для кого»; может быть пустой.
+ */
 public record InviteResponse(
         Long id,
         String token,
         String registrationUrl,
-        String firstName,
-        String lastName,
+        String label,
         Instant createdAt,
         Instant expiresAt
 ) {
@@ -18,8 +22,7 @@ public record InviteResponse(
                 invite.getId(),
                 invite.getToken(),
                 frontendBaseUrl + "/register/" + invite.getToken(),
-                invite.getFirstName(),
-                invite.getLastName(),
+                invite.getLabel(),
                 invite.getCreatedAt(),
                 invite.getExpiresAt()
         );
